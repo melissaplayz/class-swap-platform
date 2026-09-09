@@ -1,22 +1,23 @@
-from app import db
+from flask import request, jsonify
+from app import app, db, bcrypt
+from models import Student
+from flask_jwt_extended import create_access_token
 
-class Student(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
-    email = db.Column(db.String(120), unique=True, nullable=False)
-    password = db.Column(db.String(200), nullable=False)
+@app.route('/register', methods=['POST'])
+def register():
+    data = request.get_json()
+    hashed_pw = bcrypt.generate_password_hash(data['password']).decode('utf-8')
+    new_student = Student(name=data['name'], email=data['email'], password=hashed_pw)
+    db.session.add(new_student)
+    db.session.commit()
+    return jsonify({"message": "Student registered successfully"}), 201
 
-class Class(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    course_code = db.Column(db.String(20), nullable=False)
-    class_no = db.Column(db.String(20), nullable=False)
-    day = db.Column(db.String(20), nullable=False)
-    time = db.Column(db.String(20), nullable=False)
-    room = db.Column(db.String(50), nullable=False)
+@app.route('/login', methods=['POST'])
+def login():
+    data = request.get_json()
+    student = Student.query.filter_by(email=data['email']).first()
+    if student and bcrypt.check_password_hash(student.password, data['password']):
+        token = create_access_token(identity=student.id)
+        return jsonify({"token": token}), 200
+    return jsonify({"message": "Invalid credentials"}), 401
 
-class SwapRequest(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    requester_id = db.Column(db.Integer, db.ForeignKey('student.id'), nullable=False)
-    target_class_id = db.Column(db.Integer, db.ForeignKey('class.id'), nullable=False)
-    status = db.Column(db.String(20), default="pending")
-credentials"}), 401
