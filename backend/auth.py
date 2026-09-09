@@ -1,22 +1,22 @@
-from flask import request, jsonify
-from flask_bcrypt import Bcrypt
-from flask_jwt_extended import create_access_token
-from models import db, Student
+from app import db
 
-bcrypt = Bcrypt()
+class Student(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    password = db.Column(db.String(200), nullable=False)
 
-def register():
-    data = request.json
-    hashed_pw = bcrypt.generate_password_hash(data['password']).decode('utf-8')
-    student = Student(name=data['name'], email=data['email'], password=hashed_pw)
-    db.session.add(student)
-    db.session.commit()
-    return jsonify({"message": "Student registered!"})
+class Class(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    course_code = db.Column(db.String(20), nullable=False)
+    class_no = db.Column(db.String(20), nullable=False)
+    day = db.Column(db.String(20), nullable=False)
+    time = db.Column(db.String(20), nullable=False)
+    room = db.Column(db.String(50), nullable=False)
 
-def login():
-    data = request.json
-    student = Student.query.filter_by(email=data['email']).first()
-    if student and bcrypt.check_password_hash(student.password, data['password']):
-        token = create_access_token(identity=student.id)
-        return jsonify({"token": token})
-    return jsonify({"error": "Invalid credentials"}), 401
+class SwapRequest(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    requester_id = db.Column(db.Integer, db.ForeignKey('student.id'), nullable=False)
+    target_class_id = db.Column(db.Integer, db.ForeignKey('class.id'), nullable=False)
+    status = db.Column(db.String(20), default="pending")
+credentials"}), 401
