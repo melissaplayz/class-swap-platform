@@ -1,53 +1,41 @@
 from flask import request, jsonify
-from models import db, SwapRequest, ChatMessage
+from app import app, db
+from models import Class, SwapRequest
 from flask_jwt_extended import jwt_required, get_jwt_identity
 
-# --- Swap Endpoints ---
-def create_swap():
-    data = request.json
-    swap = SwapRequest(
-        requester_id=get_jwt_identity(),
-        offered_class_id=data['offered_class_id'],
-        desired_class_id=data['desired_class_id']
+@app.route('/classes', methods=['POST'])
+@jwt_required()
+def add_class():
+    data = request.get_json()
+    new_class = Class(
+        course_code=data['course_code'],
+        class_no=data['class_no'],
+        day=data['day'],
+        time=data['time'],
+        room=data['room']
     )
-    db.session.add(swap)
+    db.session.add(new_class)
     db.session.commit()
-    return jsonify({"message": "Swap request created!"})
+    return jsonify({"message": "Class added successfully"}), 201
 
+@app.route('/swap', methods=['POST'])
+@jwt_required()
+def request_swap():
+    data = request.get_json()
+    requester_id = get_jwt_identity()
+    new_swap = SwapRequest(
+        requester_id=requester_id,
+        target_class_id=data['target_class_id']
+    )
+    db.session.add(new_swap)
+    db.session.commit()
+    return jsonify({"message": "Swap request created"}), 201
+
+@app.route('/swap/<int:swap_id>/accept', methods=['POST'])
+@jwt_required()
 def accept_swap(swap_id):
-    swap = SwapRequest.query.get(swap_id)
-    if swap:
-        swap.status = "accepted"
-        db.session.commit()
-        return jsonify({"message": "Swap accepted!"})
-    return jsonify({"error": "Swap not found"}), 404
-
-def get_swaps():
-    swaps = SwapRequest.query.filter_by(status="pending").all()
-    return jsonify([{
-        "id": s.id,
-        "offered_class": s.offered_class_id,
-        "desired_class": s.desired_class_id
-    } for s in swaps])
-
-# --- Chat Endpoints ---
-def send_message(swap_id):
-    data = request.json
-    message = ChatMessage(
-        swap_id=swap_id,
-        sender_id=get_jwt_identity(),
-        receiver_id=data['receiver_id'],
-        message_text=data['message_text']
-    )
-    db.session.add(message)
+    swap = SwapRequest.query.get_or_404(swap_id)
+    swap.status = "accepted"
     db.session.commit()
-    return jsonify({"message": "Message sent!"})
+    return jsonify({"message": "Swap accepted"}), 200
 
-def get_messages(swap_id):
-    messages = ChatMessage.query.filter_by(swap_id=swap_id).order_by(ChatMessage.timestamp).all()
-    return jsonify([{
-        "sender_id": m.sender_id,
-        "receiver_id": m.receiver_id,
-        "text": m.message_text,
-        "time": m.timestamp
-    } for m in messages])
