@@ -11,7 +11,6 @@ db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
 jwt = JWTManager(app)
 
-# Import routes after db setup
 import routes
 
 if __name__ == "__main__":
